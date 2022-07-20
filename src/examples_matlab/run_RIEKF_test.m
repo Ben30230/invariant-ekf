@@ -1,7 +1,7 @@
 %% Script to run simulation
 
 % Reset 
-clear; restoredefaultpath; clc;
+% clear; restoredefaultpath; clc;
 
 % Add paths
 addpath(genpath('forward_kinematics'))
