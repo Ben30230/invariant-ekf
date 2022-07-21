@@ -21,27 +21,27 @@ load data\ground_truth\position.mat
 load data\ground_truth\velocity.mat
 
 
-%% 从第二个数据开始
+%% 从第N0个数据开始
 % X0=X_init.Data(:,:,2);
-
-R0=orientation.Data(:,:,2);
-v0=velocity.Data(2,:)';
-p0=position.Data(2,:)';
-dl=R0*p_VectorNav_to_LeftToeBottom(joint_meas(2,:));
-dr=R0*p_VectorNav_to_RightToeBottom(joint_meas(2,:));
+N0=10;
+R0=orientation.Data(:,:,N0);
+v0=velocity.Data(N0,:)';
+p0=position.Data(N0,:)';
+dl=R0*p_VectorNav_to_LeftToeBottom(joint_meas(N0,:));
+dr=R0*p_VectorNav_to_RightToeBottom(joint_meas(N0,:));
 P=0.001*eye(15);
-P(7:9,7:9)=0;
+% P(7:9,7:9)=0;
 robotstate=RobotState(R0,v0,p0,dl,dr,P);
 
 N=length(t);
-% N=20;
+% N=1000;
 
 % estimation
 R_Estimation=zeros(3,3,N);
 v_Estimation=zeros(3,N);
 p_Estimation=zeros(3,N);
 
-for i=2:N
+for i=N0:N
 %     if i==223
 %         pause
 %     end
@@ -83,9 +83,17 @@ for i=2:N
 
     % prediction
     robotstate.prediction(angular_mat(i,:),acc_mat(i,:),joint_meas(i,:),0.0005);
+
+    %debug 
+%     if i==443
+%         robotstate.P_member
+%         robotstate.X_member
+%     end
+
     % correction
     if robotstate.contact_flag_member~=0 && i>20
         robotstate.Correction(joint_meas(i,:));
+%         disp("pudate!")
     end
 
     % record estimation
@@ -102,9 +110,9 @@ close all
 figure
 for i=1:3
     subplot(3,1,i)
-    plot(2:N,v_Estimation(i,2:N))
+    plot(N0:N,v_Estimation(i,N0:N))
     hold on
-    plot(2:N,velocity.Data(2:N,i))
+    plot(N0:N,velocity.Data(N0:N,i))
     hold off
     legend('Estiamtion','GroundTruth')
     xlabel('time step')
@@ -123,9 +131,9 @@ sgtitle("Estimation of linear velocity")
 figure
 for i=1:3
     subplot(3,1,i)
-    plot(2:N,p_Estimation(i,2:N))
+    plot(N0:N,p_Estimation(i,N0:N))
     hold on
-    plot(2:N,position.Data(2:N,i))
+    plot(N0:N,position.Data(N0:N,i))
     hold off
     legend('Estiamtion','GroundTruth')
     xlabel('time step')

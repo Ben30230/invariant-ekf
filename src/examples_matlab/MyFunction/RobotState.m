@@ -72,20 +72,6 @@ classdef RobotState < handle
                     leftcontact_flag=1;
                     rightcontact_flag=1;
             end
-            
-            % descreted prediction
-            % Base Pose Dynamics
-            obj.R_member = obj.R_member * expm(axis2skew(w_meas*Delta_T));
-            obj.v_member = obj.v_member + (obj.R_member*a_meas + obj.g_member)*Delta_T;
-            obj.p_member = obj.p_member + obj.v_member*Delta_T + ...
-                            0.5*(obj.R_member*a_meas + obj.g_member)*Delta_T^2;
-            
-            % Foot Position Dynamics
-            dL_off = obj.p_member + obj.R_member * p_VectorNav_to_LeftToeBottom(joint_meas);  % {W}_p_{WL}
-            dR_off = obj.p_member + obj.R_member * p_VectorNav_to_RightToeBottom(joint_meas); % {W}_p_{WR}
-            obj.dl_member = leftcontact_flag*obj.dl_member + (1-leftcontact_flag)*dL_off;
-            obj.dr_member = rightcontact_flag*obj.dr_member + (1-rightcontact_flag)*dR_off;
-
             % Generate X-matrix form
             obj.X_member(1:3,1:3)=obj.R_member;
             obj.X_member(1:3,4)=obj.v_member;
@@ -94,6 +80,8 @@ classdef RobotState < handle
             h_R_left=R_VectorNav_to_LeftToeBottom(joint_meas);
             h_R_right=R_VectorNav_to_RightToeBottom(joint_meas);
             Q=zeros(3*3+3*(leftcontact_flag+rightcontact_flag));
+            Q(1:3,1:3)=obj.angular_vel_cov_member;
+            Q(4:6,4:6)=obj.acc_cov_member;
             if leftcontact_flag && rightcontact_flag
                 obj.X_member(1:3,6)=obj.dl_member;
                 obj.X_member(1:3,7)=obj.dr_member;
@@ -109,6 +97,20 @@ classdef RobotState < handle
 
             F=eye(size(At))+At*Delta_T;
             F_Q=Delta_T*obj.Adjoint(obj.X_member);
+
+            % descreted prediction
+            % Base Pose Dynamics
+            obj.R_member = obj.R_member * expm(axis2skew(w_meas*Delta_T));
+            obj.v_member = obj.v_member + (obj.R_member*a_meas + obj.g_member)*Delta_T;
+            obj.p_member = obj.p_member + obj.v_member*Delta_T + ...
+                            0.5*(obj.R_member*a_meas + obj.g_member)*Delta_T^2;
+            
+            % Foot Position Dynamics
+            dL_off = obj.p_member + obj.R_member * p_VectorNav_to_LeftToeBottom(joint_meas);  % {W}_p_{WL}
+            dR_off = obj.p_member + obj.R_member * p_VectorNav_to_RightToeBottom(joint_meas); % {W}_p_{WR}
+            obj.dl_member = leftcontact_flag*obj.dl_member + (1-leftcontact_flag)*dL_off;
+            obj.dr_member = rightcontact_flag*obj.dr_member + (1-rightcontact_flag)*dR_off;
+
             obj.P_member=F*obj.P_member*F'+F_Q*Q*F_Q' ;
             
             obj.StateGroup();
