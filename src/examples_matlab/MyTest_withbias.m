@@ -21,6 +21,8 @@ load data\ground_truth\position.mat
 load data\ground_truth\velocity.mat
 
 %%
+angular_mat = angular_mat+[0,0,0];
+%%
 N0= 10;
 R0=orientation.Data(:,:,N0);
 v0=velocity.Data(N0,:)';
@@ -28,10 +30,15 @@ p0=position.Data(N0,:)';
 dl=R0*p_VectorNav_to_LeftToeBottom(joint_meas(N0,:));
 dr=R0*p_VectorNav_to_RightToeBottom(joint_meas(N0,:));
 d_all=[dl,dr];
-P=0.001*eye(9);
+flag_bias = 1;
+if flag_bias
+    P=0.001*eye(15);
+else
+    P=0.001*eye(9);
+end
 bg = zeros(3,1);
 ba = zeros(3,1);
-robotstate=RobotState_Bias(R0,v0,p0,d_all,P,0);
+robotstate=RobotState_Bias(R0,v0,p0,d_all,P,flag_bias);
 
 N=length(t);
 % N=1000;
@@ -40,6 +47,9 @@ N=length(t);
 R_Estimation=zeros(3,3,N);
 v_Estimation=zeros(3,N);
 p_Estimation=zeros(3,N);
+
+bg_Estimation=zeros(3,N);
+ba_Estimation=zeros(3,N);
 
 for i=N0:N
     if contact_mat(i,1) == 1
@@ -74,6 +84,8 @@ for i=N0:N
     R_Estimation(:,:,i) = robotstate.R_member;
     v_Estimation(:,i) = robotstate.v_member;
     p_Estimation(:,i) = robotstate.p_member;
+    bg_Estimation(:,i) = robotstate.bg_member;
+    ba_Estimation(:,i) = robotstate.ba_member;
 end
 
 %% PLOT
@@ -121,24 +133,40 @@ for i=1:3
 end
 sgtitle("Estimation of linear position")
 
-% % SO3
-% error_R=zeros(3,N);
-% for i=N0:N
-%     tem_logcoordinates=logm(orientation.Data(:,:,i)*R_Estimation(:,:,i)');
-%     error_R(:,i)=skew2axis(tem_logcoordinates);
-% end
-% figure
-% for i=1:3
-%     subplot(3,1,i)
-%     plot(N0:N,error_R(i,N0:N))
-%     xlabel('time step')
-%     switch i
-%         case 1
-%             ylabel('log-coor(1)')
-%         case 2
-%             ylabel('log-coor(2)')
-%         case 3
-%             ylabel('log-coor(3)')
-%     end
-% end
-% sgtitle("Estimation of orientation (log(R_tR'))")
+% bias
+figure
+for i=1:2
+    for j=1:3
+        subplot(3,2,i+2*(j-1))     
+        if i==1
+            plot(N0:N,bg_Estimation(j,N0:N))
+            title('bg')
+        else
+            plot(N0:N,ba_Estimation(j,N0:N))
+            title('ba')
+        end
+    end
+end
+sgtitle("Estimation of Bias")
+
+% SO3
+error_R=zeros(3,N);
+for i=N0:N
+    tem_logcoordinates=logm(orientation.Data(:,:,i)*R_Estimation(:,:,i)');
+    error_R(:,i)=skew2axis(tem_logcoordinates);
+end
+figure
+for i=1:3
+    subplot(3,1,i)
+    plot(N0:N,error_R(i,N0:N))
+    xlabel('time step')
+    switch i
+        case 1
+            ylabel('log-coor(1)')
+        case 2
+            ylabel('log-coor(2)')
+        case 3
+            ylabel('log-coor(3)')
+    end
+end
+sgtitle("Estimation of orientation (log(R_tR'))")

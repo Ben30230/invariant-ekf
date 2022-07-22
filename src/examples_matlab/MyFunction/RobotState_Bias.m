@@ -40,6 +40,7 @@ classdef RobotState_Bias < handle
             obj.v_member = v;
             obj.p_member = p;
             obj.d_all_member = d_all;
+            obj.d_all_member = zeros(3,2);
             obj.X_member = [R,v,p;zeros(2,3),eye(2)];
             obj.P_member = P;
             obj.bias_flag_member = bias_flag;
@@ -57,7 +58,7 @@ classdef RobotState_Bias < handle
             obj.g_member=[0,0,-9.81]';
             obj.legcontact_flag_member=zeros(1,2);  %1*k   k legs
             obj.legcontact_last_flag_member=zeros(1,2);
-            obj.bg_cov_member = 0.01*eye(3);
+            obj.bg_cov_member = 0.02*eye(3);
             obj.ba_cov_member = 0.01*eye(3);
 
             obj.At_member = [zeros(3,9),-obj.R_member,zeros(3);
@@ -113,45 +114,55 @@ classdef RobotState_Bias < handle
             else
                 H = zeros(3*N_now,9+3*N_now);
             end
-            k=1;
-            for i = 1:2
-                if obj.legcontact_flag_member(i)
-                    H(k*3-2:k*3,7:9) = -eye(3);
-                    H(k*3-2:k*3,9+k*3-2:9+k*3) = eye(3);
-                    R_prime(k*3-2:k*3,k*3-2:k*3) = obj.R_member * obj.Kin_Jaco(joint_meas,i)*obj.encoder_cov_member...
-                        *obj.Kin_Jaco(joint_meas,i)'* obj.R_member';
-                    k=k+1;
+
+            for i_IEKF = 1:1
+            % iterative 
+                k=1;
+                for i = 1:2
+                    if obj.legcontact_flag_member(i)
+                        H(k*3-2:k*3,7:9) = -eye(3);
+                        H(k*3-2:k*3,9+k*3-2:9+k*3) = eye(3);
+                        R_prime(k*3-2:k*3,k*3-2:k*3) = obj.R_member * obj.Kin_Jaco(joint_meas,i)*obj.encoder_cov_member...
+                            *obj.Kin_Jaco(joint_meas,i)'* obj.R_member';
+                        k=k+1;
+                    end
                 end
-            end
 
-            K=obj.P_member*H'/(H*obj.P_member*H'+R_prime);
-            inovation = zeros(N_now*3,1);
-            k=1;
-            for i = 1:2
-                if obj.legcontact_flag_member(i)
-                    Y = zeros(5+N_now,1);
-                    Y(1:3,1) = obj.Kin_posi(joint_meas,i);
-                    Y(5) =1;
-                    Y(5+k) =-1;
-                    inovation(k*3-2:k*3,1) = [eye(3),zeros(3,2+N_now)] * obj.X_member *Y;
-                    k=k+1;
+                K=obj.P_member*H'/(H*obj.P_member*H'+R_prime);
+                inovation = zeros(N_now*3,1);
+                k=1;
+                for i = 1:2
+                    if obj.legcontact_flag_member(i)
+                        Y = zeros(5+N_now ,1);
+                        Y(1:3,1) = obj.Kin_posi(joint_meas,i);
+                        Y(5) =1;
+                        Y(5+k) =-1;
+                        inovation(k*3-2:k*3,1) = [eye(3),zeros(3,2+N_now)] * obj.X_member *Y;
+                        k=k+1;
+                    end
                 end
-            end
 
-            if obj.bias_flag_member
-                K_X=K(1:9+3*N_now,:);
-                K_bias=K(end-5:end,:);
-                obj.X_member=expm(obj.Rn2liealgebra(K_X*inovation))*obj.X_member;
-                bg_ba_all_inovation=K_bias * inovation;
-                obj.bg_member = obj.bg_member + bg_ba_all_inovation(1:3);
-                obj.ba_member = obj.ba_member + bg_ba_all_inovation(4:6);
-            else
-                obj.X_member=expm(obj.Rn2liealgebra(K*inovation))*obj.X_member;
-            end
+                if obj.bias_flag_member
+                    delta=K*inovation;
+%                     K_X=K(1:9+3*N_now,:);
+%                     K_bias=K(end-5:end,:);
+                    
+                    obj.X_member=expm(obj.Rn2liealgebra(delta(1:end-6)))*obj.X_member;
+%                     bg_ba_all_inovation=K_bias * inovation;
+                    obj.bg_member = obj.bg_member + delta(end-5:end-3);
+                    obj.ba_member = obj.ba_member + delta(end-2:end);
+                    obj.bg_member(3)=0;
+                else
+                    obj.X_member=expm(obj.Rn2liealgebra(K*inovation))*obj.X_member;
+                end
 
+                obj.SeprateX();
+            end
             obj.P_member=(eye(size(obj.P_member))-K*H)*obj.P_member;
+%             obj.P_member=(eye(size(obj.P_member))-K*H)*obj.P_member*(eye(size(obj.P_member))-K*H)'+...
+%                 K*R_prime*K';
             
-            obj.SeprateX();
+            
         end
 
         function AdjX = Adjoint(~,X)
