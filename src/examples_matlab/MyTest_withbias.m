@@ -23,14 +23,14 @@ load data\ground_truth\velocity.mat
 %%
 angular_mat = angular_mat+[0,0,0];
 %%
-N0= 10;
+N0= 20;
 R0=orientation.Data(:,:,N0);
 v0=velocity.Data(N0,:)';
 p0=position.Data(N0,:)';
 dl=R0*p_VectorNav_to_LeftToeBottom(joint_meas(N0,:));
 dr=R0*p_VectorNav_to_RightToeBottom(joint_meas(N0,:));
 d_all=[dl,dr];
-flag_bias = 1;
+flag_bias = 0;
 if flag_bias
     P=0.001*eye(15);
 else

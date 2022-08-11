@@ -58,7 +58,7 @@ classdef RobotState_Bias < handle
             obj.g_member=[0,0,-9.81]';
             obj.legcontact_flag_member=zeros(1,2);  %1*k   k legs
             obj.legcontact_last_flag_member=zeros(1,2);
-            obj.bg_cov_member = 0.02*eye(3);
+            obj.bg_cov_member = 0.01*eye(3);
             obj.ba_cov_member = 0.01*eye(3);
 
             obj.At_member = [zeros(3,9),-obj.R_member,zeros(3);
@@ -151,7 +151,7 @@ classdef RobotState_Bias < handle
 %                     bg_ba_all_inovation=K_bias * inovation;
                     obj.bg_member = obj.bg_member + delta(end-5:end-3);
                     obj.ba_member = obj.ba_member + delta(end-2:end);
-                    obj.bg_member(3)=0;
+%                     obj.bg_member(3)=0;
                 else
                     obj.X_member=expm(obj.Rn2liealgebra(K*inovation))*obj.X_member;
                 end
@@ -161,7 +161,8 @@ classdef RobotState_Bias < handle
             obj.P_member=(eye(size(obj.P_member))-K*H)*obj.P_member;
 %             obj.P_member=(eye(size(obj.P_member))-K*H)*obj.P_member*(eye(size(obj.P_member))-K*H)'+...
 %                 K*R_prime*K';
-            
+            % TEST for consider bg as a constant
+%             obj.bg_member = 
             
         end
 

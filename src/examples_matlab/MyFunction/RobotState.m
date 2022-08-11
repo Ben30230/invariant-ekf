@@ -10,6 +10,7 @@ classdef RobotState < handle
         dr_member
         X_member
         P_member
+        
 
         % covriance
         encoder_cov_member
