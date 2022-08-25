@@ -2,6 +2,8 @@ clc,clear
 close all
 addpath('MyFunction\')
 addpath(genpath('forward_kinematics'))
+addpath('Optimization\')
+
 
 load data\measurements\angular_velocity.mat
 load data\measurements\linear_acceleration.mat
@@ -10,8 +12,8 @@ load data\measurements\encoders.mat
 load data\measurements\X_init.mat
 
 t = angular_velocity.Time;
-angular_mat = angular_velocity.Data;
-acc_mat = linear_acceleration.Data;
+angular_mat_ori = angular_velocity.Data;
+acc_mat_ori = linear_acceleration.Data;
 joint_meas=encoders.Data;
 contact_mat = contact.Data;
 
@@ -21,7 +23,7 @@ load data\ground_truth\position.mat
 load data\ground_truth\velocity.mat
 
 %%
-angular_mat = angular_mat+[0,0,0];
+angular_mat_ori = angular_mat_ori+[0,0,0];
 %%
 N0= 20;
 R0=orientation.Data(:,:,N0);
@@ -43,6 +45,14 @@ robotstate=RobotState_Bias(R0,v0,p0,d_all,P,flag_bias);
 N=length(t);
 % N=1000;
 
+% bias constant
+bg_offset = zeros(3,1);
+ba_offset = zeros(3,1);
+bg_array = zeros(3,1000);
+ba_array = zeros(3,1000);
+bg_array_real = zeros(3,1000);
+k_b=1;
+
 % estimation
 R_Estimation=zeros(3,3,N);
 v_Estimation=zeros(3,N);
@@ -51,6 +61,8 @@ p_Estimation=zeros(3,N);
 bg_Estimation=zeros(3,N);
 ba_Estimation=zeros(3,N);
 
+angular_mat = angular_mat_ori;
+acc_mat = acc_mat_ori;
 for i=N0:N
     if contact_mat(i,1) == 1
         robotstate.legcontact_flag_member(1) = 1;
@@ -68,7 +80,10 @@ for i=N0:N
 %         disp("switch at i="+num2str(i))
     end
 
-    robotstate.prediction(angular_mat(i,:),acc_mat(i,:),joint_meas(i,:),0.0005);
+
+    if i > N0
+        robotstate.prediction(angular_mat(i,:),acc_mat(i,:),joint_meas(i,:),0.0005);
+    end
     
     %debug 
 %     if i==443
@@ -86,6 +101,25 @@ for i=N0:N
     p_Estimation(:,i) = robotstate.p_member;
     bg_Estimation(:,i) = robotstate.bg_member;
     ba_Estimation(:,i) = robotstate.ba_member;
+
+    % bias constant
+    % compute bg ba
+    if i>N0
+        bg_array(:,k_b)=angular_mat(i-1,:)'- Log(R_Estimation(:,:,i-1)*R_Estimation(:,:,i)')/0.0005;
+        k_b=k_b+1;
+        bg_array_real(:,k_b)= angular_mat_ori(i-1,:)'- Log(orientation.Data(:,:,i-1)'*orientation.Data(:,:,i))/0.0005;
+    end
+
+    if k_b == 1001
+        bg_offset = mean(bg_array,2);
+        ba_offset = mean(ba_array,2);
+        k_b = 1;
+        disp("estimated bias mean: "+num2str(bg_offset'))
+        disp("real bias mean: "+num2str(mean(bg_array_real,2)'))
+        angular_mat = angular_mat - bg_offset';
+%         acc_mat = acc_mat - ba_offset';
+    end
+
 end
 
 %% PLOT
@@ -152,8 +186,7 @@ sgtitle("Estimation of Bias")
 % SO3
 error_R=zeros(3,N);
 for i=N0:N
-    tem_logcoordinates=logm(orientation.Data(:,:,i)*R_Estimation(:,:,i)');
-    error_R(:,i)=skew2axis(tem_logcoordinates);
+    error_R(:,i)=Log(orientation.Data(:,:,i)*R_Estimation(:,:,i)');
 end
 figure
 for i=1:3
