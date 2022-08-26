@@ -21,15 +21,21 @@ load data\ground_truth\orientation.mat
 load data\ground_truth\position.mat
 load data\ground_truth\velocity.mat
 
+% encoder_diff
+encoder_dot_meas = zeros(14,length(t));
+for i = 2: length(t)-1
+    encoder_dot_meas(:,i) = (joint_meas(i+1,:)-joint_meas(i-1,:))'/(2*0.0005);
+end
+
 %% MAIN
-N0=10;
+N0=223;
 N=length(t);    %total length
 
 gravity = -9.81;
 
 w_meas = angular_mat_ori';
 a_meas = acc_mat_ori';
-encoder_meas = joint_meas';
+encoder_meas = joint_meas;
 
 
 cov_Ri = 0.001*eye(3);
@@ -39,8 +45,8 @@ cov_bgi = 0.0001*eye(3);
 cov_bai = 0.0001*eye(3);
 cov_angular_vel = 0.001*eye(3);
 cov_acc = 0.001*eye(3);
-cov_bgij = 1e-6*eye(3);  
-cov_baij = 1e-6*eye(3); 
+% cov_bgij = 1e-6*eye(3);  
+% cov_baij = 1e-6*eye(3); 
 
 
 % Preintegration estimation
@@ -60,8 +66,8 @@ for num_loop = 1:17
         check_Ri=orientation.Data(:,:,N0);
         check_vi=velocity.Data(N0,:)';
         check_pi=position.Data(N0,:)';
-        check_bgi = zeros(3,1);
-        check_bai = zeros(3,1);
+%         check_bgi = zeros(3,1);
+%         check_bai = zeros(3,1);
         bar_bg = zeros(3,1);
         bar_ba = zeros(3,1);
         
@@ -92,8 +98,10 @@ for num_loop = 1:17
     vi = check_vi;
     pi = check_pi;
 
-    [Bar_Delta_R,Bar_Delta_v,Bar_delta_p,par_R_par_bg,par_v_par_bg,par_v_par_ba,par_p_par_bg,par_p_par_ba]...
-        = DeltabarRvpij(i,j,w_meas,bar_bg,a_meas,bar_ba,Delta_t);
+%     [Bar_Delta_R,Bar_Delta_v,Bar_delta_p,par_R_par_bg,par_v_par_bg,par_v_par_ba,par_p_par_bg,par_p_par_ba]...
+%         = DeltabarRvpij(i,j,w_meas,bar_bg,a_meas,bar_ba,Delta_t);
+    [Bar_Delta_R,Bar_Delta_v,Bar_delta_p,Bar_delta_l,par_R_par_bg,par_v_par_bg,par_v_par_ba,par_p_par_bg,par_p_par_ba,par_l_par_bg]...
+        = DeltabarRvpij(i,j,w_meas,bar_bg,a_meas,bar_ba,Delta_t,encoder_meas,contact_mat,encoder_dot_meas);
 
     Rj = Ri;
     vj = vi;
@@ -126,8 +134,8 @@ for num_loop = 1:17
         % error_total = [r_Ri;r_vi;r_pi;r_bgi;r_bai;r_deltaRij;r_deltavij;r_deltapij;r_bgij;r_baij];
 
         % Leg residual
-        % r_dektalij = Ri *(pj-pi) -  Deltatilde_l_ij(i,j,w_meas,bar_bg,delta_bg,Delta_t,tilde_v_k);
-
+        r_dektalij = Ri *(pj-pi) -  Bar_delta_l + par_l_par_bg * delta_bg ; 
+        
         error_total = [r_Ri;r_vi;r_pi;r_bgi;r_bai;r_deltaRij;r_deltavij;r_deltapij];
         %------------------------ end -------------------------
 
