@@ -119,7 +119,7 @@ for num_loop = 1:17
         % IMU residual
         r_deltaRij = Log((Bar_Delta_R*Exp(par_R_par_bg*delta_bg))'*Ri'*Rj);
         r_deltavij = Ri'*(vj-vi-gravity*(j-i)*Delta_t)-(Bar_Delta_v+par_v_par_bg*delta_bg+par_v_par_ba*delta_ba);
-        r_deltapij = Ri'*(pj-pi-vi*(j-i)*Delta_t-0.5*(j-i)*(j-i)*Delta_t*Delta_t)-...
+        r_deltapij = Ri'*(pj-pi-vi*(j-i)*Delta_t-0.5*gravity*(j-i)*(j-i)*Delta_t*Delta_t)-...
             (Bar_delta_p+par_p_par_bg*delta_bg+par_p_par_ba*delta_ba);
         % r_bgij = bgj-bgi;  这里先不管 bgj 和 baj
         % r_baij = baj-bai;
