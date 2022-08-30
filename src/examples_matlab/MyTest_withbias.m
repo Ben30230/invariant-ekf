@@ -25,7 +25,7 @@ load data\ground_truth\velocity.mat
 %%
 angular_mat_ori = angular_mat_ori+[0,0,0];
 %%
-N0= 20;
+N0= 1263;
 R0=orientation.Data(:,:,N0);
 v0=velocity.Data(N0,:)';
 p0=position.Data(N0,:)';
@@ -115,7 +115,7 @@ for i=N0:N
         ba_offset = mean(ba_array,2);
         k_b = 1;
         disp("estimated bias mean: "+num2str(bg_offset'))
-        disp("real bias mean: "+num2str(mean(bg_array_real,2)'))
+%         disp("real bias mean: "+num2str(mean(bg_array_real,2)'))
         angular_mat = angular_mat - bg_offset';
 %         acc_mat = acc_mat - ba_offset';
     end

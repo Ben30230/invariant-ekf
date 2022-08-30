@@ -1,5 +1,5 @@
-function [JacobianR,Jacobianv,Jacobianp] = JacobianofIMUresidualfunc(i,j,Ri,Rj,vi,vj,pi,pj,residual_R,delta_bg,Delta_t,...
-    par_R_par_bg,par_v_par_bg,par_v_par_ba,par_p_par_bg,par_p_par_ba,g)
+function [JacobianR,Jacobianv,Jacobianp,Jacobianl] = JacobianofIMUresidualfunc(i,j,Ri,Rj,vi,vj,pi,pj,residual_R,delta_bg,Delta_t,...
+    par_R_par_bg,par_v_par_bg,par_v_par_ba,par_p_par_bg,par_p_par_ba,g,par_l_par_bg)
 %Jacobianofresidualfunc Compute jacobians of three residual functions
 % input:
 %       i ---- int
@@ -35,7 +35,7 @@ else
     Deltatij_square = (j-i) * (j-i) * Delta_t * Delta_t;
 
     % position residual function jacobian
-    par_rp_par_phii = axis2skew(Ri'*(pj-pi-vi*Deltatij-0.5*9.81*Deltatij_square));
+    par_rp_par_phii = axis2skew(Ri'*(pj-pi-vi*Deltatij-0.5*g*Deltatij_square));
     par_rp_par_vi = -Ri'*Deltatij;
     par_rp_par_pi = -eye(3);
     par_rp_par_bg = -par_p_par_bg;
@@ -62,6 +62,14 @@ else
     
     JacobianR = [par_rR_par_phii,zeros(3,6),par_rR_par_bg,...
         zeros(3),par_rR_par_phij,zeros(3,6)];
+
+    % leg residual function jacobian
+    par_rl_par_phii = axis2skew(Ri'*(pj-pi));
+    par_rl_par_pi = -eye(3);
+    par_rl_par_bgi = - par_l_par_bg;
+    par_rl_par_pj = Ri'*Rj;
+
+    Jacobianl = [par_rl_par_phii,zeros(3),par_rl_par_pi,par_rl_par_bgi,zeros(3,9),par_rl_par_pj];
 end
 
 

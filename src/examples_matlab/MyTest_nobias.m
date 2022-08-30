@@ -23,7 +23,7 @@ load data\ground_truth\velocity.mat
 
 %% 从第N0个数据开始
 % X0=X_init.Data(:,:,2);
-N0=10;
+N0=1263;
 R0=orientation.Data(:,:,N0);
 v0=velocity.Data(N0,:)';
 p0=position.Data(N0,:)';
